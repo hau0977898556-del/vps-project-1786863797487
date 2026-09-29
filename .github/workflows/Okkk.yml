@@ -1,0 +1,43 @@
+# 1. Tải và giải nén ngrok
+Write-Host "📥 Đang tải ngrok..."
+Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip" -TimeoutSec 60
+Expand-Archive -Path "ngrok.zip" -DestinationPath "." -Force
+Write-Host "✅ Đã tải và giải nén ngrok"
+
+# 2. Cấu hình AuthToken
+.\ngrok.exe config add-authtoken $env:NGROK_AUTHTOKEN
+
+# 3. Khởi chạy ngrok trỏ tới port noVNC (6080)
+Write-Host "🌐 Đang khởi động ngrok tunnel..."
+Start-Process -FilePath ".\ngrok.exe" -ArgumentList "http 6080 --log=stdout" -WindowStyle Hidden
+Start-Sleep -Seconds 10
+
+# 4. Lấy URL public qua Local API của ngrok (127.0.0.1:4040)
+$maxAttempts = 30
+$attempt = 0
+$ngrokUrl = ""
+
+do {
+    $attempt++
+    Write-Host "🔄 Đang lấy ngrok URL (lần $attempt/$maxAttempts)..."
+    Start-Sleep -Seconds 2
+    try {
+        $tunnelInfo = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels" -TimeoutSec 5 -ErrorAction Stop
+        if ($tunnelInfo.tunnels -and $tunnelInfo.tunnels.Count -gt 0) {
+            $ngrokUrl = $tunnelInfo.tunnels[0].public_url
+            Write-Host "✅ Tìm thấy ngrok URL: $ngrokUrl"
+            break
+        }
+    } catch {
+        Write-Host "⏳ Chờ API ngrok khởi động..."
+    }
+} while ($attempt -lt $maxAttempts)
+
+if ($ngrokUrl) {
+    # noVNC chạy trên nền HTTP, đường dẫn truy cập sẽ là:
+    $remoteLink = "$ngrokUrl/vnc.html"
+    Write-Host "🌌 Đường dẫn truy cập: $remoteLink"
+    $remoteLink | Out-File -FilePath "remote-link.txt" -Encoding UTF8 -NoNewline
+} else {
+    Write-Host "❌ Không thể khởi tạo ngrok tunnel"
+}
