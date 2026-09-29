@@ -5,6 +5,7 @@ Expand-Archive -Path "ngrok.zip" -DestinationPath "." -Force
 Write-Host "✅ Đã tải và giải nén ngrok"
 
 # 2. Cấu hình AuthToken
+# .
 .\ngrok.exe config add-authtoken $env:NGROK_AUTHTOKEN
 
 # 3. Khởi chạy ngrok trỏ tới port noVNC (6080)
